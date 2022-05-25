@@ -67,6 +67,7 @@ typedef enum {
     tvVideoResolution_1024x600,
     tvVideoResolution_1280x600,
     tvVideoResolution_1280x720,
+    tvVideoResolution_1280x1024,
     tvVideoResolution_1680x720,
     tvVideoResolution_1024x768,
     tvVideoResolution_1280x768,
