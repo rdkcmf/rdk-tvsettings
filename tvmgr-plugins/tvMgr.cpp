@@ -84,6 +84,9 @@ static char videoDescBuffer[VIDEO_DESCRIPTION_MAX*VIDEO_DESCRIPTION_NAME_SIZE] =
 
 
 #define TVSETTINGS_RFC_CALLERID        "tvsettings"
+#define TVSETTINGS_RFC_CALLERID_OVERRIDE        "../../opt/panel/tvsettings"
+#define TVSETTINGS_OVERRIDE_PATH       "/opt/panel/tvsettings.ini"
+#define TVSETTINGS_CONVERTERBOARD_PANELID     "0_0_00"
 #define TVSETTINGS_PICTUREMODE_RFC_PARAM      "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.TvSettings.PictureMode"
 #define TVSETTINGS_ASPECTRATIO_RFC_PARAM      "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.TvSettings.AspectRatio"
 #define TVSETTINGS_AUTO_BACKLIGHT_MODE_RFC_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.TvSettings.AutoBacklightMode"
@@ -4102,7 +4105,8 @@ namespace Plugin {
         else
             LOGINFO("Read panel id ok [%s] \n", panelId);
 
-        if(strncmp(panelId,"0_0_00",strlen("0_0_00"))==0)
+        /* Load Default Panel ID for Converter Boards*/
+        if(strncmp(panelId,TVSETTINGS_CONVERTERBOARD_PANELID,strlen(TVSETTINGS_CONVERTERBOARD_PANELID))==0)
         {
             memset(panelId,0,sizeof(panelId));
             GetDefaultPanelID(panelId);
@@ -4135,27 +4139,32 @@ namespace Plugin {
         std::string PQFileName = TVSETTINGS_RFC_CALLERID;
         std::string FilePath = "/etc/rfcdefaults/";
 
-        int val=GetPanelID(panelId);
-        if(val==0)
-        {
-            LOGINFO("%s : panel id read is : %s\n",__FUNCTION__,panelId);
-            if(strncmp(panelId,"0_0_00",strlen("0_0_00"))!=0)
+        /* The if condition is to override the tvsettings ini file so it helps the PQ tuning process for new panels */
+        if(access(TVSETTINGS_OVERRIDE_PATH, F_OK) == 0){
+            PQFileName = std::string(TVSETTINGS_RFC_CALLERID_OVERRIDE);
+        }else{
+            int val=GetPanelID(panelId);
+            if(val==0)
             {
-                struct stat tmp_st;
-
-                PQFileName+=std::string("_")+panelId;
-                LOGINFO("%s: Looking for %s.ini \n",__FUNCTION__,PQFileName.c_str());
-                if(stat((FilePath+PQFileName+std::string(".ini")).c_str(), &tmp_st)!=0)
+                LOGINFO("%s : panel id read is : %s\n",__FUNCTION__,panelId);
+                if(strncmp(panelId,TVSETTINGS_CONVERTERBOARD_PANELID,strlen(TVSETTINGS_CONVERTERBOARD_PANELID))!=0)
                 {
-                    //fall back
-                    LOGINFO("%s not available in %s Fall back to default\n",PQFileName.c_str(),FilePath.c_str());
-                    PQFileName =std::string(TVSETTINGS_RFC_CALLERID);
+                    struct stat tmp_st;
+
+                    PQFileName+=std::string("_")+panelId;
+                    LOGINFO("%s: Looking for %s.ini \n",__FUNCTION__,PQFileName.c_str());
+                    if(stat((FilePath+PQFileName+std::string(".ini")).c_str(), &tmp_st)!=0)
+                    {
+                        //fall back
+                        LOGINFO("%s not available in %s Fall back to default\n",PQFileName.c_str(),FilePath.c_str());
+                        PQFileName =std::string(TVSETTINGS_RFC_CALLERID);
+                    }
                 }
             }
+            else{
+                LOGINFO("%s : GetPanelID failed : %d\n",__FUNCTION__,val);
+            }
         }
-        else
-            LOGINFO("%s : GetPanelID failed : %d\n",__FUNCTION__,val);
-
         strncpy(rfc_caller_id,PQFileName.c_str(),PQFileName.size());
         LOGINFO("%s : Default tvsettings file : %s\n",__FUNCTION__,rfc_caller_id);
     }
